@@ -1,9 +1,8 @@
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
-import csv
-import os
 from datetime import datetime
+import os
 
 app = FastAPI()
 
@@ -21,24 +20,39 @@ opens = []
 clicks = []
 unsubscribes = []
 
+# Make sure the pixel.png file exists
+PIXEL_PATH = "pixel.png"
+if not os.path.exists(PIXEL_PATH):
+    with open(PIXEL_PATH, 'wb') as f:
+        f.write(b'\x89PNG\r\n\x1a\n...')  # Placeholder PNG binary data
+
 @app.get("/")
 def home():
     return {"message": "Email Tracker Backend is Live!"}
 
 @app.get("/pixel.png")
 def pixel(email: str):
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
     timestamp = datetime.utcnow().isoformat()
     opens.append({"email": email, "timestamp": timestamp})
-    return FileResponse("pixel.png", media_type="image/png")
+    return FileResponse(PIXEL_PATH, media_type="image/png")
 
 @app.get("/click")
 def click(email: str, url: str):
+    if not email or not url:
+        raise HTTPException(status_code=400, detail="Email and URL are required")
+
     timestamp = datetime.utcnow().isoformat()
     clicks.append({"email": email, "url": url, "timestamp": timestamp})
     return RedirectResponse(url)
 
 @app.get("/unsubscribe")
 def unsubscribe(email: str):
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
     timestamp = datetime.utcnow().isoformat()
     unsubscribes.append({"email": email, "timestamp": timestamp})
     return Response(
